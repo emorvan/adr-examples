@@ -1,198 +1,139 @@
 workspace {
 
     model {
-        user = person "Utilisateur B2B" {
-            description "Client B2B utilisant l'application de gestion de commandes."
-        }
 
-        b2bSystem = softwareSystem "Système de gestion de commandes B2B" {
-            description "Back-end microservices pour la gestion des commandes."
+        group "Toto"{
 
-            webApp = container "Application Web (Frontend)" {
-                technology "Angular/React"
-                description "Interface utilisateur utilisée par les clients B2B."
-            }
+            customerPerson = person "Customer"
+            warehousePerson = person "Warehouse Staff"
 
-            apiGateway = container "API Gateway / Ingress Controller" {
-                technology "NGINX / Traefik / Istio Gateway"
-                description "Point d'entrée HTTP vers les microservices REST."
-            }
-
-            kafka = container "Kafka Event Bus" {
-                technology "Apache Kafka"
-                description "Bus d'événements pour la communication asynchrone entre services."
-            }
-
-            prometheus = container "Prometheus / Grafana" {
-                technology "Monitoring & Observabilité"
-                description "Surveillance des métriques et alertes."
-            }
-
-            user -> webApp "Utilise via le navigateur"
-            webApp -> apiGateway "Fait des appels REST"
-
-            // === Microservices ===
-            catalogueService = container "CatalogueService" {
-                technology "Spring Boot"
-                description "Gère les produits du catalogue."
-            }
-
-            panierService = container "PanierService" {
-                technology "Spring Boot"
-                description "Gère le panier client."
-            }
-
-            commandeService = container "CommandeService" {
-                technology "Spring Boot"
-                description "Prise et suivi des commandes."
-            }
-
-            facturationService = container "FacturationService" {
-                technology "Spring Boot"
-                description "Génère les factures."
-            }
-
-            notificationService = container "NotificationService" {
-                technology "Node.js"
-                description "Envoie des notifications clients."
-            }
-
-            userService = container "UserService" {
-                technology "Spring Boot"
-                description "Gestion des utilisateurs et authentification."
-            }
-
-            // === Bases de données (containers séparés) ===
-            catalogueDb = container "Catalogue DB" {
-                technology "PostgreSQL"
-                description "Base de données du catalogue"
-            }
-
-            panierDb = container "Panier DB" {
-                technology "Redis"
-                description "Base de données du panier"
-            }
-
-            commandeDb = container "Commande DB" {
-                technology "PostgreSQL"
-                description "Base de données des commandes"
-            }
-
-            factureDb = container "Facturation DB" {
-                technology "PostgreSQL"
-                description "Base de données de facturation"
-            }
-
-            userDb = container "User DB" {
-                technology "PostgreSQL"
-                description "Base de données des utilisateurs"
-            }
-
-            // Relations REST/API
-            apiGateway -> catalogueService "Appels REST (produits)"
-            apiGateway -> panierService "Appels REST (panier)"
-            apiGateway -> commandeService "Appels REST (commandes)"
-            apiGateway -> userService "Appels REST (utilisateurs)"
-
-            // Accès bases
-            catalogueService -> catalogueDb "Lecture/Écriture"
-            panierService -> panierDb "Lecture/Écriture"
-            commandeService -> commandeDb "Lecture/Écriture"
-            facturationService -> factureDb "Lecture/Écriture"
-            userService -> userDb "Lecture/Écriture"
-
-            // Kafka
-            commandeService -> kafka "Publie CommandeValidée"
-            facturationService -> kafka "Consomme CommandeValidée"
-            notificationService -> kafka "Consomme CommandeValidée"
-        }
-
-        // === DEPLOYMENT MODEL ===
-
-        deploymentEnvironment "Kubernetes Cluster - Production" {
-            deploymentNode "Kubernetes Cluster" {
-                deploymentNode "Namespace: b2b" {
-                    deploymentNode "Pod: catalogue-service" {
-                        containerInstance catalogueService {
-                            description "Déployé avec Rolling Update"
-                            tags "rolling-update"
-                        }
+            ecommerceSystem = softwareSystem "E-Commerce" {
+                storeContainer = container "Store SPA" "E-Commerce Store" "React" "Browser,Microsoft Azure - Static Apps,Azure"
+                stockContainer = container "Stock Management SPA" "Order fufillment, stock management, order dispatch" "React" "Browser,Microsoft Azure - Static Apps,Azure"
+                dbContainer = container "Database" "Customers, Orders, Payments" "SQL Server" "Database,Microsoft Azure - Azure SQL,Azure"
+                apiContainer = container "API" "Backend" "ASP.NET Core" "Microsoft Azure - App Services,Azure" {
+                    group "Web Layer" {
+                        policyComp = component "Authorization Policy" "Authentication and authorization" "ASP.NET Core"
+                        controllerComp = component "API Controller" "Requests, responses, routing and serialisation" "ASP.NET Core"
+                        mediatrComp = component "MediatR" "Provides decoupling of requests and handlers" "MediatR"
                     }
-
-                    deploymentNode "Pod: panier-service" {
-                        containerInstance panierService {
-                            description "Déployé avec Rolling Update"
-                            tags "rolling-update"
-                        }
+                    group "Application Layer" {
+                        commandHandlerComp = component "Command Handler" "Business logic for changing state and triggering events" "MediatR request handler"
+                        queryHandlerComp = component "Query Handler" "Business logic for retrieving data" "MediatR request handler"
+                        commandValidatorComp = component "Command Validator" "Business validation prior to changing state" "Fluent Validation"
                     }
-
-                    deploymentNode "Pod: commande-service" {
-                        containerInstance commandeService {
-                            description "Déployé avec Canary Release via Istio"
-                            tags "canary-release"
-                        }
+                    group "Infrastructure Layer" {
+                        dbContextComp = component "DB Context" "ORM - Maps linq queries to the data store" "Entity Framework Core"
                     }
-
-                    deploymentNode "Pod: facturation-service" {
-                        containerInstance facturationService {
-                            description "Déployé avec Rolling Update"
-                            tags "rolling-update"
-                        }
-                    }
-
-                    deploymentNode "Pod: notification-service" {
-                        containerInstance notificationService {
-                            description "Déployé avec Rolling Update"
-                            tags "rolling-update"
-                        }
-                    }
-
-                    deploymentNode "Pod: user-service" {
-                        containerInstance userService {
-                            description "Déployé avec Rolling Update"
-                            tags "rolling-update"
-                        }
-                    }
-
-                    deploymentNode "Pod: api-gateway" {
-                        containerInstance apiGateway {
-                            description "Déployé avec Rolling Update"
-                        }
-                    }
-
-                    deploymentNode "Pod: kafka" {
-                        containerInstance kafka
-                    }
-
-                    deploymentNode "Pod: prometheus/grafana" {
-                        containerInstance prometheus
+                    group "Domain Layer" {
+                        domainModelComp = component "Model" "Domain models" "poco classes"
                     }
                 }
             }
         }
 
+        emailSystem = softwareSystem "Email System" "Sendgrid" "External"
+
+        # relationships between people and software systems 
+        customerPerson -> storeContainer "Placers Orders" "https"
+        warehousePerson -> stockContainer "Dispatches Orders" "https"
+        apiContainer -> emailSystem "Trigger emails" "https"
+        emailSystem -> customerPerson "Delivers emails" "https"
+        
+        # relationships to/from containers
+        stockContainer -> apiContainer "uses" "https"
+        storeContainer -> apiContainer "uses" "https"
+        apiContainer -> dbContainer "persists data" "https"
+
+        # relationships to/from components
+        dbContextComp -> dbContainer "stores and retrieves data"
+        storeContainer -> controllerComp "calls"
+        stockContainer -> controllerComp "calls"
+        controllerComp -> policyComp "authenticated and authorized by"
+        controllerComp -> mediatrComp "sends queries & commands to"
+        mediatrComp -> queryHandlerComp "sends query to"
+        mediatrComp -> commandValidatorComp "sends command to"
+        commandValidatorComp -> commandHandlerComp "passes command to"
+        queryHandlerComp -> dbContextComp "Gets data from"
+        commandHandlerComp -> dbContextComp "Update data in"
+        dbContextComp -> domainModelComp "contains collections of"
+    }
+
+    deployment {
+
+        node "Azure Web App" {
+            description "Host for API backend"
+            container apiContainer
+        }
+
+        node "Azure Static Web App" {
+            description "Host for E-Commerce Store and Stock Management SPA"
+            container storeContainer
+            container stockContainer
+        }
+
+        node "Azure SQL Database" {
+            description "Host for Database (Customers, Orders, Payments)"
+            container dbContainer
+        }
+
+        node "Azure Service Bus" {
+            description "Service bus for communication with external systems"
+        }
+
     }
 
     views {
-        systemContext b2bSystem {
-            include *
-            autolayout lr
-            title "C4 - Niveau 1 : Contexte Système B2B"
+
+        systemContext ecommerceSystem "Context" {
+            include * emailSystem
+            autoLayout
         }
 
-        container b2bSystem {
+        container ecommerceSystem "Container" {
             include *
-            autolayout lr
-            title "C4 - Niveau 2 : Conteneurs du Système B2B"
+            autoLayout
         }
 
-        deployment b2bSystem "Kubernetes Cluster - Production" {
-            include *
-            autolayout lr
-            title "C4 - Niveau 4 : Déploiement Kubernetes - Production"
+        component apiContainer "Component" {
+            include * customerPerson warehousePerson
+            autoLayout
         }
 
-        theme default
+        deployment "Deployment" {
+            include * Azure Web App Azure Static Web App Azure SQL Database Azure Service Bus
+            autoLayout
+        }
+
+        themes default "https://static.structurizr.com/themes/microsoft-azure-2021.01.26/theme.json"
+
+        styles {
+            # default overrides
+            element "Azure" {
+                color #ffffff
+                #stroke #438dd5
+            }
+            element "External" {
+                background #999999
+                color #ffffff
+            }
+            element "Database" {
+                shape Cylinder
+            }
+            element "Browser" {
+                shape WebBrowser
+            }
+            element "Web App" {
+                shape RoundedBox
+                background #f0f0f0
+            }
+            element "Static Web App" {
+                shape WebBrowser
+            }
+            element "Service Bus" {
+                shape Cloud
+                background #00A9C2
+            }
+        }
     }
-
 }
