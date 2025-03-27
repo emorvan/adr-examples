@@ -1,6 +1,9 @@
 ADR 002 - Choix du protocole de communication inter-services
+
 Statut : Accepté
+
 Date : 2025-03-21
+
 Contexte du projet : Application de gestion de commandes B2B (architecture microservices déjà validée - cf ADR 001)
 
 Présents :
