@@ -1,6 +1,9 @@
 ADR 001 - Choix de l’architecture : Microservices
+
 Statut : Accepté
+
 Date : 2025-03-21
+
 Contexte du projet : Application de gestion de commandes B2B avec des fonctionnalités de catalogue, panier, commande, facturation et notifications.
 
 Présents :
